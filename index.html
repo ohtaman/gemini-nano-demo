@@ -3,111 +3,330 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chrome 組み込み AI: 画面アナライザー</title>
+  <title>Chrome Built-in AI Demos Portal</title>
   <link rel="stylesheet" href="style.css">
-  <!-- Markdownレンダリング用ライブラリをCDN経由で読み込み -->
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --font-portal: 'Outfit', 'Inter', -apple-system, sans-serif;
+      --transition-base: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    body {
+      font-family: var(--font-portal);
+      background: radial-gradient(circle at 50% 0%, #ffffff 0%, #f4f6fc 100%);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    .portal-container {
+      max-width: 1000px;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+
+    /* Premium Header styling */
+    .portal-header {
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .portal-header h1 {
+      font-size: 38px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--google-blue) 0%, #15c3f8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+
+    .portal-header p {
+      font-size: 16px;
+      color: var(--text-secondary);
+      font-weight: 400;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    /* Showcase Cards Grid */
+    .showcase-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 28px;
+    }
+
+    @media (min-width: 768px) {
+      .showcase-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .showcase-card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: var(--transition-base);
+      position: relative;
+      overflow: hidden;
+      cursor: pointer;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .showcase-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      transition: var(--transition-base);
+    }
+
+    /* Accent borders */
+    .card-analyzer::before { background: linear-gradient(90deg, var(--google-blue), #15c3f8); }
+    .card-privacy::before { background: linear-gradient(90deg, var(--google-green), #81c784); }
+
+    .showcase-card:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 30px rgba(66, 133, 244, 0.1);
+      border-color: rgba(66, 133, 244, 0.2);
+    }
+
+    .card-privacy:hover {
+      box-shadow: 0 12px 30px rgba(52, 168, 83, 0.1);
+      border-color: rgba(52, 168, 83, 0.2);
+    }
+
+    .card-icon {
+      font-size: 40px;
+      margin-bottom: 20px;
+    }
+
+    .card-content h2 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: var(--text-primary);
+    }
+
+    .card-content p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.6;
+      margin-bottom: 24px;
+    }
+
+    .feature-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 28px;
+    }
+
+    .feature-item {
+      font-size: 13px;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+    }
+
+    .feature-item::before {
+      content: '✓';
+      color: var(--google-blue);
+      font-weight: bold;
+    }
+    .card-privacy .feature-item::before {
+      color: var(--google-green);
+    }
+
+    .btn-launch {
+      width: 100%;
+      background-color: #f1f3f4;
+      color: var(--text-primary);
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      text-align: center;
+      transition: var(--transition-base);
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .card-analyzer:hover .btn-launch {
+      background-color: var(--google-blue);
+      color: white;
+      border-color: var(--google-blue);
+    }
+
+    .card-privacy:hover .btn-launch {
+      background-color: var(--google-green);
+      color: white;
+      border-color: var(--google-green);
+    }
+
+    /* Configuration Panel styling */
+    .config-panel {
+      background-color: #ffffff;
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 28px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+    }
+
+    .config-panel h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .config-steps {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+
+    @media (min-width: 768px) {
+      .config-steps {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .step-item {
+      background-color: #fafafa;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .step-number {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--google-blue);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .step-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+
+    .step-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .step-desc code {
+      background-color: #eeeeee;
+      padding: 2px 4px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+    }
+  </style>
 </head>
 <body>
-  <div class="app-container">
-    <!-- ヘッダー -->
-    <header class="app-header">
-      <div class="header-main">
-        <h1>Chrome 組み込み AI: 画面アナライザー</h1>
-        <p class="subtitle">Multimodal Prompt API を使用したオンデバイス画面解析デモ (GDG 向け)</p>
-      </div>
-      <div class="status-indicator">
-        <span class="status-dot status-unknown" id="status-dot"></span>
-        <span class="status-text" id="status-text">AI機能を確認中...</span>
-      </div>
+  <div class="portal-container">
+    
+    <!-- Portal Header -->
+    <header class="portal-header">
+      <h1>Chrome Built-in AI Showcase</h1>
+      <p>Google Chrome で動作するローカル組み込み AI（Gemini Nano）を活用した、オンデバイス Multimodal Prompt API のインタラクティブ・デモポータル</p>
     </header>
 
-    <!-- トラブルシューティング（AI非対応時に表示） -->
-    <section class="card alert-card hidden" id="troubleshooting-card">
-      <h3>⚠️ Chrome 組み込み AI が準備できていません</h3>
-      <p>Gemini Nano をローカルで実行するために、以下の設定を確認してください：</p>
-      <ol>
-        <li>Chrome 148 以上を使用していることを確認してください（対応バージョンではデフォルトで有効です）。</li>
-        <li>それ以前のバージョンの場合、<code>chrome://flags</code> にアクセスし、以下を有効（Enabled）にしてください：
-          <ul>
-            <li><strong>#optimization-guide-on-device-model</strong> （"Enabled BypassRamRequirement" または "Enabled" に設定）</li>
-            <li><strong>#prompt-api-for-gemini-nano</strong> （"Enabled" に設定）</li>
-          </ul>
-        </li>
-        <li>ブラウザを再起動し、<code>chrome://components</code> を開いて <strong>Optimization Guide On Device Model</strong> の「アップデートを確認」をクリックし、モデルのダウンロードを完了させてください。</li>
-      </ol>
-      <button class="btn btn-secondary" onclick="checkAICapabilities()">ステータスを再確認する</button>
-    </section>
-
-    <!-- メインコンテンツ -->
-    <main class="main-grid">
-      <!-- コントロールパネル -->
-      <section class="card panel-controls">
-        <h2>コントロールと設定</h2>
-        
-        <div class="control-group">
-          <label for="capture-interval">キャプチャ間隔 (秒)</label>
-          <input type="number" id="capture-interval" min="3" max="120" value="5">
-        </div>
-
-        <div class="actions">
-          <button class="btn btn-primary" id="btn-start" disabled>画面キャプチャを開始</button>
-          <button class="btn btn-danger hidden" id="btn-stop">キャプチャを停止</button>
-        </div>
-      </section>
-
-      <!-- キャプチャプレビュー -->
-      <section class="card panel-preview">
-        <h2>最新のキャプチャ画面</h2>
-        <div class="video-container" id="video-container">
-          <!-- ストリーム取得用の非表示ビデオ要素 (画面外に配置してデコードを継続) -->
-          <video id="video-stream" autoplay playsinline muted style="position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none;"></video>
-          <!-- キャプチャ画像を表示するキャンバス要素 -->
-          <canvas id="captured-canvas" style="width: 100%; height: 100%; object-fit: contain;"></canvas>
-          
-          <div class="no-stream-placeholder" id="no-stream-placeholder">
-            <p>キャプチャが開始されていません。「画面キャプチャを開始」をクリックして、エディタ等のウィンドウを選択してください。</p>
+    <!-- Showcase Cards -->
+    <div class="showcase-grid">
+      
+      <!-- Card 1: Screen Capture Analyzer -->
+      <a href="screen_analyzer.html" class="showcase-card card-analyzer">
+        <div class="card-content">
+          <div class="card-icon">🖥️</div>
+          <h2>画面キャプチャ・アナライザー</h2>
+          <p>開いているウィンドウを選択してストリーミングキャプチャを行い、オンデバイス AI がコーディングエラーや作業内容を自動で解析します。</p>
+          <div class="feature-list">
+            <div class="feature-item">定期的自動スクリーンキャプチャ</div>
+            <div class="feature-item">競合を回避した高速 GPU 推論</div>
+            <div class="feature-item">解析履歴ログのタイムライン表示</div>
           </div>
         </div>
-        <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-          <span style="font-size: 13px; color: var(--text-secondary);">取得時刻: <span id="capture-time">-</span></span>
+        <div class="btn-launch">
+          デモを起動する 🚀
         </div>
-      </section>
+      </a>
 
-      <!-- 解析結果 -->
-      <section class="card panel-latest-analysis" style="grid-column: 1 / -1;">
-        <h2>解析結果 <span id="analysis-status" style="font-size: 13px; font-weight: 500; color: var(--google-blue); margin-left: 12px; display: none; animation: pulse 1.5s infinite ease-in-out;">🤖 自動解析中...</span></h2>
-        
-        <div class="control-group" style="margin-top: 10px;">
-          <label for="ai-prompt">解析指示プロンプト</label>
-          <textarea id="ai-prompt" rows="3">画面のスクリーンショットを分析し、ユーザーの作業内容と、コードのエラーや警告、例外を検知して具体的な提案を日本語で「簡潔に」箇条書きで回答してください。</textarea>
-        </div>
-
-        <div class="analysis-box empty" id="latest-analysis-content">
-          <div class="empty-state">
-            <p>画面キャプチャを開始すると、オンデバイス AI による自動解析結果がここに表示されます。</p>
+      <!-- Card 2: Privacy Redaction Checker -->
+      <a href="privacy_check.html" class="showcase-card card-privacy">
+        <div class="card-content">
+          <div class="card-icon">🔒</div>
+          <h2>個人情報検出アップローダー</h2>
+          <p>写真をアップロードまたはドラッグ＆ドロップし、ネット公開や送信をする前に、個人情報が含まれていないかをローカルで安全にチェックします。</p>
+          <div class="feature-list">
+            <div class="feature-item">ドラッグ＆ドロップによる画像解析</div>
+            <div class="feature-item">伝票や隠れたメモ等の現実的サンプル</div>
+            <div class="feature-item">サーバーに送らない安心のオンデバイス検知</div>
           </div>
         </div>
-      </section>
-    </main>
-
-    <!-- 履歴 -->
-    <section class="card panel-history">
-      <h2>解析履歴ログ</h2>
-      <div class="history-list" id="history-list">
-        <div class="empty-state">
-          <p>履歴はまだありません。</p>
+        <div class="btn-launch">
+          デモを起動する 🚀
         </div>
+      </a>
+
+    </div>
+
+    <!-- Configuration Panel -->
+    <section class="config-panel">
+      <h3>⚙️ デモ動作に必要な Chrome の準備設定</h3>
+      <div class="config-steps">
+        
+        <div class="step-item">
+          <span class="step-number">Step 1</span>
+          <h4 class="step-title">Chrome Flags の有効化</h4>
+          <p class="step-desc">
+            <code>chrome://flags</code> を開き、以下を有効にします：
+            <br>• <code>#optimization-guide-on-device-model</code> (Enabled BypassRamRequirement)
+            <br>• <code>#prompt-api-for-gemini-nano</code> (Enabled)
+          </p>
+        </div>
+
+        <div class="step-item">
+          <span class="step-number">Step 2</span>
+          <h4 class="step-title">Gemini Nano モデルのダウンロード</h4>
+          <p class="step-desc">
+            <code>chrome://components</code> を開き、
+            <br>• <code>Optimization Guide On Device Model</code> の「アップデートを確認」をクリックして、モデル(約3GB)のダウンロードを完了させてください。
+          </p>
+        </div>
+
       </div>
     </section>
-  </div>
 
-  <!-- 画像ズーム用モーダル -->
-  <div class="modal" id="image-modal">
-    <button class="modal-close" id="modal-close">&times;</button>
-    <img class="modal-content" id="modal-img" alt="拡大画像">
   </div>
-
-  <script src="main.js?v=2"></script>
 </body>
 </html>
