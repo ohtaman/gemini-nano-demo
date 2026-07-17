@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chrome 組み込み AI: 画面アナライザー</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Markdownレンダリング用ライブラリをCDN経由で読み込み -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- ヘッダー -->
+    <header class="app-header">
+      <div class="header-main">
+        <h1>Chrome 組み込み AI: 画面アナライザー</h1>
+        <p class="subtitle">Multimodal Prompt API を使用したオンデバイス画面解析デモ (GDG 向け)</p>
+      </div>
+      <div class="status-indicator">
+        <span class="status-dot status-unknown" id="status-dot"></span>
+        <span class="status-text" id="status-text">AI機能を確認中...</span>
+      </div>
+    </header>
+
+    <!-- トラブルシューティング（AI非対応時に表示） -->
+    <section class="card alert-card hidden" id="troubleshooting-card">
+      <h3>⚠️ Chrome 組み込み AI が準備できていません</h3>
+      <p>Gemini Nano をローカルで実行するために、以下の設定を確認してください：</p>
+      <ol>
+        <li>Chrome 148 以上を使用していることを確認してください（対応バージョンではデフォルトで有効です）。</li>
+        <li>それ以前のバージョンの場合、<code>chrome://flags</code> にアクセスし、以下を有効（Enabled）にしてください：
+          <ul>
+            <li><strong>#optimization-guide-on-device-model</strong> （"Enabled BypassRamRequirement" または "Enabled" に設定）</li>
+            <li><strong>#prompt-api-for-gemini-nano</strong> （"Enabled" に設定）</li>
+          </ul>
+        </li>
+        <li>ブラウザを再起動し、<code>chrome://components</code> を開いて <strong>Optimization Guide On Device Model</strong> の「アップデートを確認」をクリックし、モデルのダウンロードを完了させてください。</li>
+      </ol>
+      <button class="btn btn-secondary" onclick="checkAICapabilities()">ステータスを再確認する</button>
+    </section>
+
+    <!-- メインコンテンツ -->
+    <main class="main-grid">
+      <!-- コントロールパネル -->
+      <section class="card panel-controls">
+        <h2>コントロールと設定</h2>
+        
+        <div class="control-group">
+          <label for="capture-interval">キャプチャ間隔 (秒)</label>
+          <input type="number" id="capture-interval" min="3" max="120" value="5">
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="btn-start" disabled>画面キャプチャを開始</button>
+          <button class="btn btn-danger hidden" id="btn-stop">キャプチャを停止</button>
+        </div>
+      </section>
+
+      <!-- キャプチャプレビュー -->
+      <section class="card panel-preview">
+        <h2>最新のキャプチャ画面</h2>
+        <div class="video-container" id="video-container">
+          <!-- ストリーム取得用の非表示ビデオ要素 (画面外に配置してデコードを継続) -->
+          <video id="video-stream" autoplay playsinline muted style="position: absolute; width: 1px; height: 1px; opacity: 0.01; pointer-events: none;"></video>
+          <!-- キャプチャ画像を表示するキャンバス要素 -->
+          <canvas id="captured-canvas" style="width: 100%; height: 100%; object-fit: contain;"></canvas>
+          
+          <div class="no-stream-placeholder" id="no-stream-placeholder">
+            <p>キャプチャが開始されていません。「画面キャプチャを開始」をクリックして、エディタ等のウィンドウを選択してください。</p>
+          </div>
+        </div>
+        <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <span style="font-size: 13px; color: var(--text-secondary);">取得時刻: <span id="capture-time">-</span></span>
+        </div>
+      </section>
+
+      <!-- 解析結果 -->
+      <section class="card panel-latest-analysis" style="grid-column: 1 / -1;">
+        <h2>解析結果 <span id="analysis-status" style="font-size: 13px; font-weight: 500; color: var(--google-blue); margin-left: 12px; display: none; animation: pulse 1.5s infinite ease-in-out;">🤖 自動解析中...</span></h2>
+        
+        <div class="control-group" style="margin-top: 10px;">
+          <label for="ai-prompt">解析指示プロンプト</label>
+          <textarea id="ai-prompt" rows="3">画面のスクリーンショットを分析し、ユーザーの作業内容と、コードのエラーや警告、例外を検知して具体的な提案を日本語で「簡潔に」箇条書きで回答してください。</textarea>
+        </div>
+
+        <div class="analysis-box empty" id="latest-analysis-content">
+          <div class="empty-state">
+            <p>画面キャプチャを開始すると、オンデバイス AI による自動解析結果がここに表示されます。</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- 履歴 -->
+    <section class="card panel-history">
+      <h2>解析履歴ログ</h2>
+      <div class="history-list" id="history-list">
+        <div class="empty-state">
+          <p>履歴はまだありません。</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 画像ズーム用モーダル -->
+  <div class="modal" id="image-modal">
+    <button class="modal-close" id="modal-close">&times;</button>
+    <img class="modal-content" id="modal-img" alt="拡大画像">
+  </div>
+
+  <script src="main.js?v=2"></script>
+</body>
+</html>

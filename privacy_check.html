@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chrome 組み込み AI: 個人情報チェッカー</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <!-- Markdown Renderer -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    /* Google Brand Colors and Design System */
+    :root {
+      --google-blue: #4285F4;
+      --google-red: #EA4335;
+      --google-yellow: #FBBC05;
+      --google-green: #34A853;
+      
+      --bg-app: #f8f9fa;
+      --bg-card: #ffffff;
+      --bg-input: #f1f3f4;
+      
+      --text-primary: #202124;
+      --text-secondary: #5f6368;
+      --text-muted: #dadce0;
+      
+      --border-color: #dadce0;
+      
+      --color-primary: var(--google-blue);
+      --color-primary-hover: #1a73e8;
+      --color-success: var(--google-green);
+      --color-danger: var(--google-red);
+      --color-warning: var(--google-yellow);
+
+      --shadow-sm: 0 1px 2px 0 rgba(60,64,67,0.3), 0 1px 3px 1px rgba(60,64,67,0.15);
+      --shadow-md: 0 1px 3px 0 rgba(60,64,67,0.3), 0 4px 8px 3px rgba(60,64,67,0.15);
+      
+      --radius-sm: 8px;
+      --radius-md: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, sans-serif;
+      background-color: var(--bg-app);
+      color: var(--text-primary);
+      line-height: 1.5;
+      padding: 20px;
+    }
+
+    .app-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Header */
+    .app-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .app-header h1 {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--google-blue);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .app-header .subtitle {
+      color: var(--text-secondary);
+      font-size: 13px;
+      margin-top: 4px;
+    }
+
+    /* Status badge */
+    .status-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background-color: var(--bg-card);
+      padding: 6px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border-color);
+      font-size: 12px;
+      font-weight: 500;
+      box-shadow: 0 1px 2px 0 rgba(60,64,67,0.1);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+
+    .status-unknown { background-color: var(--text-muted); }
+    .status-checking { 
+      background-color: var(--google-yellow);
+      animation: pulse 1.5s infinite ease-in-out;
+    }
+    .status-ready { background-color: var(--google-green); }
+    .status-unsupported { background-color: var(--google-red); }
+
+    @keyframes pulse {
+      0% { transform: scale(0.9); opacity: 0.6; }
+      50% { transform: scale(1.1); opacity: 1; }
+      100% { transform: scale(0.9); opacity: 0.6; }
+    }
+
+    /* Cards */
+    .card {
+      background-color: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      box-shadow: 0 1px 3px 0 rgba(60,64,67,0.1);
+    }
+
+    .card h2 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: var(--text-primary);
+      border-left: 4px solid var(--google-blue);
+      padding-left: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Layout Grid */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    @media (min-width: 768px) {
+      .main-grid {
+        grid-template-columns: 1.1fr 0.9fr;
+      }
+    }
+
+    /* Inputs and Controls */
+    .control-group {
+      margin-bottom: 16px;
+    }
+
+    .control-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .control-group textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      background-color: var(--bg-card);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      resize: vertical;
+    }
+
+    .control-group textarea:focus {
+      border-color: var(--google-blue);
+      box-shadow: 0 0 0 1px var(--google-blue);
+    }
+
+    /* File uploader and image actions */
+    .upload-zone {
+      border: 2px dashed var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 24px;
+      text-align: center;
+      background-color: #fafafa;
+      cursor: pointer;
+      transition: border-color 0.2s, background-color 0.2s;
+      margin-bottom: 16px;
+    }
+
+    .upload-zone:hover {
+      border-color: var(--google-blue);
+      background-color: #f2f7ff;
+    }
+
+    .upload-zone p {
+      font-size: 14px;
+      color: var(--text-secondary);
+      margin-top: 8px;
+    }
+
+    .file-input {
+      display: none;
+    }
+
+    .button-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+    }
+
+    /* Buttons */
+    .btn {
+      padding: 10px 18px;
+      border: none;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.15s, opacity 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:hover { opacity: 0.9; }
+    .btn:active { opacity: 0.8; }
+    .btn:disabled {
+      background-color: var(--text-muted) !important;
+      color: var(--text-secondary) !important;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    .btn-primary { background-color: var(--google-blue); color: white; }
+    .btn-secondary { background-color: #f1f3f4; color: #3c4043; border: 1px solid var(--border-color); }
+    .btn-check { background-color: var(--google-green); color: white; width: 100%; padding: 12px; font-size: 15px; font-weight: 600; }
+
+    /* Canvas / Preview Container */
+    .preview-container {
+      width: 100%;
+      background-color: #202124;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      aspect-ratio: 16/10;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      border: 1px solid var(--border-color);
+    }
+
+    .preview-canvas {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    .no-image-placeholder {
+      text-align: center;
+      padding: 20px;
+      color: #9aa0a6;
+      font-size: 14px;
+    }
+
+    /* Analysis Box */
+    .analysis-box {
+      background-color: #f8f9fa;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      min-height: 250px;
+      max-height: 480px;
+      overflow-y: auto;
+      font-size: 14px;
+    }
+
+    .analysis-box.empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+
+    /* Output Markdown Styling */
+    .analysis-box h3 { font-size: 16px; font-weight: 600; margin: 16px 0 8px; color: var(--google-blue); border-bottom: 1px solid var(--border-color); padding-bottom: 4px; }
+    .analysis-box h3:first-of-type { margin-top: 0; }
+    .analysis-box p { margin-bottom: 10px; color: #3c4043; line-height: 1.6; }
+    .analysis-box ul, .analysis-box ol { margin-left: 20px; margin-bottom: 12px; }
+    .analysis-box li { margin-bottom: 4px; }
+    .analysis-box strong { color: var(--text-primary); }
+    .analysis-box blockquote {
+      border-left: 4px solid var(--google-red);
+      background-color: #fdf2f2;
+      padding: 10px 14px;
+      margin: 12px 0;
+      border-radius: 4px;
+      font-weight: 500;
+    }
+    
+    /* Warning/Redact Highlights */
+    .highlight-redact {
+      background-color: rgba(234, 67, 53, 0.15);
+      border-left: 3px solid var(--google-red);
+      padding: 8px 12px;
+      border-radius: 4px;
+      margin-top: 6px;
+      font-size: 13px;
+    }
+
+    /* Troubleshooting alert */
+    .alert-card {
+      border: 1px solid var(--google-red);
+      border-left: 4px solid var(--google-red);
+      background-color: #fce8e6;
+      border-radius: var(--radius-sm);
+      padding: 16px;
+    }
+    .alert-card h3 { color: #c5221f; margin-bottom: 6px; font-size: 15px; }
+    .alert-card p, .alert-card li { color: #c5221f; font-size: 13px; margin-bottom: 4px; }
+    .alert-card ol { margin-left: 20px; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-main">
+        <h1>🛡️ Chrome 組み込み AI: 個人情報チェッカー</h1>
+        <p class="subtitle">Multimodal Prompt API を使用した、アップロード前の個人情報検知デモ (オンデバイス処理)</p>
+      </div>
+      <div class="status-indicator">
+        <span class="status-dot status-unknown" id="status-dot"></span>
+        <span class="status-text" id="status-text">AI機能を確認中...</span>
+      </div>
+    </header>
+
+    <!-- Troubleshooting instructions (Hidden by default) -->
+    <section class="card alert-card hidden" id="troubleshooting-card">
+      <h3>⚠️ Chrome 組み込み AI (Gemini Nano) が利用できません</h3>
+      <p>このデモを実行するには、Chrome のオンデバイス AI (Multimodal Prompt API) が有効である必要があります。以下の設定を確認してください：</p>
+      <ol>
+        <li>Chrome 148 以上を使用していることを確認してください。</li>
+        <li><code>chrome://flags</code> にアクセスし、以下を設定してください：
+          <ul>
+            <li><strong>#optimization-guide-on-device-model</strong> を "Enabled BypassRamRequirement" または "Enabled" に設定</li>
+            <li><strong>#prompt-api-for-gemini-nano</strong> を "Enabled" に設定</li>
+          </ul>
+        </li>
+        <li>設定変更後、ブラウザを再起動し、<code>chrome://components</code> を開いて <strong>Optimization Guide On Device Model</strong> の「アップデートを確認」をクリックし、モデルのダウンロードを完了させてください。</li>
+      </ol>
+      <button class="btn btn-secondary" onclick="checkAICapabilities()" style="margin-top: 10px;">ステータスを再確認する</button>
+    </section>
+
+    <!-- Navigation link to screen analyzer -->
+    <div style="text-align: right;">
+      <a href="index.html" style="font-size: 13px; color: var(--google-blue); text-decoration: none; font-weight: 500;">👈 画面アナライザーのデモへ戻る</a>
+    </div>
+
+    <!-- Main Grid Layout -->
+    <main class="main-grid">
+      <!-- Left Column: Image Selection & Preview -->
+      <section class="card">
+        <h2>画像を読み込む</h2>
+        
+        <!-- Drag & Drop Uploader Area -->
+        <div class="upload-zone" id="upload-zone">
+          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--text-secondary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <circle cx="8.5" cy="8.5" r="1.5"></circle>
+            <polyline points="21 15 16 10 5 21"></polyline>
+          </svg>
+          <p>ここに画像をドラッグ＆ドロップ、またはクリックしてファイルを選択</p>
+          <input type="file" id="file-input" class="file-input" accept="image/*">
+        </div>
+
+        <div class="button-row">
+          <button class="btn btn-secondary" id="btn-sample">📦 サンプル画像1 (宅配伝票)</button>
+          <button class="btn btn-secondary" id="btn-sample-subtle">🔍 サンプル画像2 (見落としがちなメモ)</button>
+          <button class="btn btn-secondary hidden" id="btn-clear">🗑️ 画像をクリア</button>
+        </div>
+
+        <div class="preview-container">
+          <canvas id="preview-canvas" class="preview-canvas hidden"></canvas>
+          <div class="no-image-placeholder" id="no-image-placeholder">
+            <p>画像が選択されていません。上のアップローダーから選択するか、サンプル画像ボタンを押してください。</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Column: Analysis Configuration and Result -->
+      <section class="card">
+        <h2>AI 分析設定と結果</h2>
+        
+        <div class="control-group">
+          <label for="ai-prompt">AI への指示プロンプト</label>
+          <textarea id="ai-prompt" rows="3">この画像をチャットに投稿したら問題があるか教えてください。また、隠すべき個人情報（名前、住所、電話番号など）を検知した場合は、その情報を指摘し、隠すべき理由を優しく日本語で説明してください。</textarea>
+        </div>
+
+        <button class="btn btn-check" id="btn-check" disabled>個人情報をチェックする 🚀</button>
+
+        <div style="margin-top: 20px;">
+          <label style="display: block; font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 6px;">分析結果</label>
+          <div class="analysis-box empty" id="analysis-result">
+            <div class="empty-state">
+              <p>画像を読み込み、「個人情報をチェックする」をクリックすると、オンデバイス AI によるチェックが開始されます。</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <script>
+    // Global references
+    let currentImageElement = null;
+
+    // Get LanguageModel API
+    function getLanguageModelAPI() {
+      return window.LanguageModel || (window.ai && window.ai.languageModel);
+    }
+
+    // Check availability
+    async function getAIAvailability() {
+      const LM = getLanguageModelAPI();
+      if (!LM) return 'no';
+      try {
+        if (typeof LM.availability === 'function') {
+          const avail = await LM.availability();
+          return avail === 'unavailable' ? 'no' : avail;
+        }
+        if (typeof LM.capabilities === 'function') {
+          const cap = await LM.capabilities();
+          return cap.available;
+        }
+      } catch (e) {
+        console.error('Error checking availability:', e);
+      }
+      return 'no';
+    }
+
+    // Check and update UI based on AI Capabilities
+    async function checkAICapabilities() {
+      const statusText = document.getElementById('status-text');
+      const statusDot = document.getElementById('status-dot');
+      const troubleshootingCard = document.getElementById('troubleshooting-card');
+      const btnCheck = document.getElementById('btn-check');
+
+      statusDot.className = 'status-dot';
+      const LM = getLanguageModelAPI();
+
+      if (!LM) {
+        statusText.textContent = '非対応 (LanguageModel API が検出されませんでした)';
+        statusDot.classList.add('status-unsupported');
+        troubleshootingCard.classList.remove('hidden');
+        return false;
+      }
+
+      try {
+        statusDot.classList.add('status-checking');
+        statusText.textContent = 'AIモデルを確認中...';
+        
+        const availability = await getAIAvailability();
+        statusDot.className = 'status-dot';
+
+        if (availability === 'no') {
+          statusText.textContent = 'モデルがこのデバイスで利用できません';
+          statusDot.classList.add('status-unsupported');
+          troubleshootingCard.classList.remove('hidden');
+          return false;
+        } else if (availability === 'after-download') {
+          statusText.textContent = 'モデルのダウンロードが必要です';
+          statusDot.classList.add('status-checking');
+          troubleshootingCard.classList.remove('hidden');
+          // Allow using application while waiting for model download
+          updateCheckButtonState();
+          return true;
+        } else {
+          statusText.textContent = '準備完了 (オンデバイスAI有効)';
+          statusDot.classList.add('status-ready');
+          troubleshootingCard.classList.add('hidden');
+          updateCheckButtonState();
+          return true;
+        }
+      } catch (err) {
+        console.error('Error during AI capabilities check:', err);
+        statusText.textContent = 'エラー: ' + err.message;
+        statusDot.classList.add('status-unsupported');
+        troubleshootingCard.classList.remove('hidden');
+        return false;
+      }
+    }
+
+    // Update the check button disabled state depending on image loading
+    function updateCheckButtonState() {
+      const btnCheck = document.getElementById('btn-check');
+      if (currentImageElement) {
+        btnCheck.removeAttribute('disabled');
+      } else {
+        btnCheck.setAttribute('disabled', 'true');
+      }
+    }
+
+    // Draw Image to Canvas maintaining aspect ratio nicely
+    function drawImageToCanvas(img) {
+      const canvas = document.getElementById('preview-canvas');
+      const placeholder = document.getElementById('no-image-placeholder');
+      const btnClear = document.getElementById('btn-clear');
+      
+      // Calculate best fit dimensions for canvas (Max width or height: 1000px for good quality text extraction)
+      const maxDim = 1000;
+      let width = img.naturalWidth || img.width;
+      let height = img.naturalHeight || img.height;
+
+      if (width > maxDim || height > maxDim) {
+        if (width > height) {
+          height = Math.round((height * maxDim) / width);
+          width = maxDim;
+        } else {
+          width = Math.round((width * maxDim) / height);
+          height = maxDim;
+        }
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, width, height);
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // Show canvas and clear button
+      canvas.classList.remove('hidden');
+      placeholder.classList.add('hidden');
+      btnClear.classList.remove('hidden');
+
+      currentImageElement = img;
+      updateCheckButtonState();
+    }
+
+    // Load sample image
+    function loadSampleImage(filename) {
+      const img = new Image();
+      img.onload = function() {
+        drawImageToCanvas(img);
+      };
+      img.onerror = function() {
+        alert(`サンプル画像 (${filename}) の読み込みに失敗しました。プロジェクトのルートディレクトリに存在するか確認してください。`);
+      };
+      img.src = filename;
+    }
+
+    // Handle file selection
+    function handleFile(file) {
+      if (!file || !file.type.startsWith('image/')) {
+        alert('画像ファイルを選択してください。');
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+          drawImageToCanvas(img);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Clear everything
+    function clearImage() {
+      const canvas = document.getElementById('preview-canvas');
+      const placeholder = document.getElementById('no-image-placeholder');
+      const btnClear = document.getElementById('btn-clear');
+      const fileInput = document.getElementById('file-input');
+
+      canvas.classList.add('hidden');
+      placeholder.classList.remove('hidden');
+      btnClear.classList.add('hidden');
+      fileInput.value = '';
+      currentImageElement = null;
+      updateCheckButtonState();
+
+      // Clear analysis result too
+      const resultBox = document.getElementById('analysis-result');
+      resultBox.classList.add('empty');
+      resultBox.innerHTML = `
+        <div class="empty-state">
+          <p>画像を読み込み、「個人情報をチェックする」をクリックすると、オンデバイス AI によるチェックが開始されます。</p>
+        </div>
+      `;
+    }
+
+    // Request AI analysis
+    async function checkPrivacy() {
+      const canvas = document.getElementById('preview-canvas');
+      const promptText = document.getElementById('ai-prompt').value;
+      const resultBox = document.getElementById('analysis-result');
+      const btnCheck = document.getElementById('btn-check');
+
+      if (!currentImageElement) {
+        alert('先に画像をロードしてください。');
+        return;
+      }
+
+      // Display loader
+      resultBox.classList.remove('empty');
+      resultBox.innerHTML = `
+        <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; min-height: 200px; text-align:center; padding: 20px;">
+          <p style="font-weight: 600; color: var(--google-blue); font-size: 16px; margin-bottom: 8px;">🤖 On-Device AI が画像内の個人情報をスキャン中...</p>
+          <div style="width: 24px; height: 24px; border: 3px solid #f3f3f3; border-top: 3px solid var(--google-blue); border-radius: 50%; animation: spin 1s linear infinite; margin: 12px auto;"></div>
+          <p style="font-size: 13px; color: var(--text-secondary);">ローカルで処理を行っています。数十秒かかる場合があります。</p>
+        </div>
+      `;
+      
+      // Spinner animation style injector (done once dynamically)
+      if (!document.getElementById('spinner-style')) {
+        const style = document.createElement('style');
+        style.id = 'spinner-style';
+        style.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+        document.head.appendChild(style);
+      }
+
+      btnCheck.setAttribute('disabled', 'true');
+      let session = null;
+
+      try {
+        const LM = getLanguageModelAPI();
+        
+        // Initialize Multimodal Session
+        session = await LM.create({
+          expectedInputs: [{ type: 'image' }]
+        });
+
+        // Run prompt
+        const responseText = await session.prompt([
+          {
+            role: "user",
+            content: [
+              { type: "text", value: promptText },
+              { type: "image", value: canvas }
+            ]
+          }
+        ]);
+
+        // Parse markdown result safely using marked
+        const parsedHtml = marked.parse(responseText);
+        resultBox.innerHTML = parsedHtml;
+
+      } catch (err) {
+        console.error('Privacy check failed:', err);
+        resultBox.innerHTML = `
+          <div style="padding: 16px; border: 1px solid var(--google-red); border-radius: 4px; background-color: #fdf2f2;">
+            <p style="color: var(--google-red); font-weight: 600; font-size: 15px; margin-bottom: 6px;">⚠️ 解析エラーが発生しました</p>
+            <p style="color: var(--text-secondary); font-size: 13px;">${err.message}</p>
+            <p style="margin-top: 10px; font-size: 12px; color: var(--text-secondary);">※Chrome flagsの設定やOptimization Guideモデルのダウンロードが正常に完了しているか再確認してください。</p>
+          </div>
+        `;
+      } finally {
+        if (session) {
+          session.destroy();
+        }
+        updateCheckButtonState();
+      }
+    }
+
+    // Set up drag-and-drop & file selection events and initial check
+    function init() {
+      const uploadZone = document.getElementById('upload-zone');
+      const fileInput = document.getElementById('file-input');
+      const btnSample = document.getElementById('btn-sample');
+      const btnSampleSubtle = document.getElementById('btn-sample-subtle');
+      const btnClear = document.getElementById('btn-clear');
+      const btnCheck = document.getElementById('btn-check');
+
+      if (uploadZone && fileInput) {
+        // Click to choose file
+        uploadZone.addEventListener('click', () => fileInput.click());
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+          if (e.target.files.length > 0) {
+            handleFile(e.target.files[0]);
+          }
+        });
+
+        // Drag and drop events
+        uploadZone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          uploadZone.style.borderColor = 'var(--google-blue)';
+          uploadZone.style.backgroundColor = '#f2f7ff';
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+          uploadZone.style.borderColor = 'var(--border-color)';
+          uploadZone.style.backgroundColor = '#fafafa';
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          uploadZone.style.borderColor = 'var(--border-color)';
+          uploadZone.style.backgroundColor = '#fafafa';
+          if (e.dataTransfer.files.length > 0) {
+            handleFile(e.dataTransfer.files[0]);
+          }
+        });
+      }
+
+      // Action buttons
+      if (btnSample) btnSample.addEventListener('click', () => loadSampleImage('sample_delivery_box.png'));
+      if (btnSampleSubtle) btnSampleSubtle.addEventListener('click', () => loadSampleImage('sample_subtle_workspace.png'));
+      if (btnClear) btnClear.addEventListener('click', clearImage);
+      if (btnCheck) btnCheck.addEventListener('click', checkPrivacy);
+
+      // Initialize status checks
+      checkAICapabilities();
+    }
+
+    // Safely execute init depending on document loading state
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+</body>
+</html>
